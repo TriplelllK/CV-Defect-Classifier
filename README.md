@@ -29,7 +29,7 @@
 ### 1. Клонируйте репозиторий
 
 ```bash
-cd c:\Users\kdyus\Documents\CV-Defect-Classifie
+cd c:\Users\Documents\CV-Defect-Classifie
 ```
 
 ### 2. Создайте виртуальную среду
@@ -57,7 +57,7 @@ pip install -r requirements.txt
 ### 5. Подготовьте датасет
 
 Скачайте **NEU Surface Defects dataset**:
-- GitHub: https://github.com/abnormally/NEU_surface_defects_data
+- GitHub: [https://github.com/abnormally/NEU_surface_defects_data](https://www.kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database?resource=download)
 
 Выпакуйте его в папку `datasets/` проекта со следующей структурой:
 
