@@ -241,7 +241,6 @@ Dense(6, Softmax) [выходной слой]
 - Loss (train vs validation)
 - кол-во эпох
 
-![Training History](training/images/training_history.png)
 
 #### 2. **confusion_matrix.png**
 Матрица ошибок классификации:
@@ -249,7 +248,6 @@ Dense(6, Softmax) [выходной слой]
 - по диагонали — правильные предсказания
 - вне диагонали — ошибки
 
-![Confusion Matrix](training/images/confusion_matrix.png)
 
 #### 3. **classification_report.txt**
 Детальный отчет с метриками:
@@ -330,6 +328,14 @@ show_gradcam(r"datasets/validation/images/scratches/scratches_123.jpg")
 #### Скриншот приложения
 
 ![Приложение результат](images/output_sample.png)
+
+#### Traininghistory
+
+![Приложение результат](images/training_history.png)
+
+#### Confusion matrix
+
+![Приложение результат](images/Confusion_matrix.png)
 
 ---
 
