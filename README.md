@@ -329,13 +329,13 @@ show_gradcam(r"datasets/validation/images/scratches/scratches_123.jpg")
 
 ![Приложение результат](images/output_sample.png)
 
-#### Traininghistory
+#### Training history
 
 ![Приложение результат](images/training_history.png)
 
 #### Confusion matrix
 
-![Приложение результат](images/Confusion_matrix.png)
+![Приложение результат](images/confusion_matrix.png)
 
 ---
 
