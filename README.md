@@ -330,22 +330,20 @@ show_gradcam(r"datasets/validation/images/scratches/scratches_123.jpg")
 ### Обучить модель с нуля
 
 ```powershell
-# 1. Подготовить датасет (см. разделы выше)
-# 2. Активировать виртуальную среду
+# Активируйте среду
 .venv\Scripts\Activate
 
-# 3. Запустить обучение
+# Запустите обучение
 python -m training.train_neu_model
-# Займет ~10-15 минут на CPU, 2-3 минуты на GPU
 ```
 
 ### Протестировать модель на примерах
 
 ```powershell
-# Запустить Grad-CAM визуализацию
+# Grad-CAM
 python -m training.grad_cam_demo
 
-# Или запустить веб-приложение и загружать изображения вручную
+# Или веб-приложение
 python -m flask run
 ```
 
@@ -355,7 +353,7 @@ python -m flask run
 from app.model_utils import predict_defect
 from werkzeug.datastructures import FileStorage
 
-# Файл из flask request
+# Файл из request
 file = request.files['file']
 
 # Предсказание

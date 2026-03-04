@@ -1,5 +1,3 @@
-
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,17 +9,15 @@ from tensorflow.keras.preprocessing import image as keras_image
 tf.config.run_functions_eagerly(True)
 
 
-IMG_SIZE = (200, 200)  
+IMG_SIZE = (200, 200)
 
-# base dir
+# Базовые пути
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# paths
 MODEL_PATH = os.path.join(BASE_DIR, "app", "models", "neu_best_finetuned.keras")
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "app", "models", "class_names.txt")
 
-# sample img
-# change path maybe
+# Папка с примерами
 EXAMPLE_IMG = os.path.join(BASE_DIR, "datasets", "validation", "images")
 
 print(f"Base directory: {BASE_DIR}")
@@ -37,9 +33,8 @@ if not os.path.isfile(MODEL_PATH):
 if not os.path.isfile(CLASS_NAMES_PATH):
     raise FileNotFoundError(f"class_names.txt не найден по пути:\n{CLASS_NAMES_PATH}")
 
-# find img
 def find_sample_image(base_img_dir):
-    """Ищет первое изображение в подпапках классов"""
+    # Ищем первое изображение в подпапках классов
     if not os.path.isdir(base_img_dir):
         return None
     
@@ -97,7 +92,7 @@ head_model.summary()
 
 
 def load_and_preprocess_image(img_path, img_size=IMG_SIZE):
-    
+    # Загружаем и нормализуем изображение
     img = keras_image.load_img(img_path, target_size=img_size)
     img_array = keras_image.img_to_array(img).astype("float32") / 255.0
     img_batch = np.expand_dims(img_array, axis=0)
@@ -105,39 +100,30 @@ def load_and_preprocess_image(img_path, img_size=IMG_SIZE):
 
 
 def make_gradcam_heatmap(img_array_batch):
-    
-    
+    # Строим heatmap через градиенты
     with tf.GradientTape() as tape:
-        
-        feature_maps = backbone(img_array_batch, training=False)  
-
-        
+        feature_maps = backbone(img_array_batch, training=False)
         tape.watch(feature_maps)
 
-        
-        predictions = head_model(feature_maps, training=False)  
+        predictions = head_model(feature_maps, training=False)
 
         pred_index = tf.argmax(predictions[0])
-        class_channel = predictions[:, pred_index]  
+        class_channel = predictions[:, pred_index]
 
-    
-    grads = tape.gradient(class_channel, feature_maps)  
+    grads = tape.gradient(class_channel, feature_maps)
 
-    
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))  
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
 
-    feature_maps = feature_maps[0]  
+    feature_maps = feature_maps[0]
 
-    
-    heatmap = tf.reduce_sum(feature_maps * pooled_grads, axis=-1)  
+    heatmap = tf.reduce_sum(feature_maps * pooled_grads, axis=-1)
 
-    
     heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-8)
     return heatmap.numpy(), predictions.numpy()
 
 
 def show_gradcam(img_path):
-    
+    # Показываем Grad-CAM для одного изображения
     print(f"\nОбработка изображения: {img_path}")
     img_batch, img_array = load_and_preprocess_image(img_path)
 
@@ -147,19 +133,16 @@ def show_gradcam(img_path):
     pred_class = class_names[pred_index]
     confidence = float(preds[0][pred_index])
 
-    
     h, w, _ = img_array.shape
     heatmap_resized = cv2.resize(heatmap, (w, h))
     heatmap_resized = np.uint8(255 * heatmap_resized)
     heatmap_color = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_JET)
 
-    
     original_uint8 = (img_array * 255).astype("uint8")
 
     superimposed_img = heatmap_color * 0.4 + original_uint8
     superimposed_img = np.clip(superimposed_img, 0, 255).astype("uint8")
 
-    
     plt.figure(figsize=(12, 4))
 
     plt.subplot(1, 3, 1)
@@ -187,11 +170,11 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("GRAD-CAM VISUALIZATION")
     print("="*60)
-    
-    # show one img
+
+    # Показываем пример
     show_gradcam(IMG_PATH)
-    
-    # maybe more imgs
+
+    # Подсказка для другого файла
     print("\n" + "-"*60)
     print("Если хотите обработать другое изображение, вызовите:")
     print('  show_gradcam("путь/к/изображению.jpg")')

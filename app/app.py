@@ -1,4 +1,3 @@
-# app file
 from flask import (
     Flask,
     render_template,
@@ -10,14 +9,12 @@ from flask import (
 from .model_utils import predict_defect
 
 app = Flask(__name__)
-app.secret_key = "super-secret-key"  # change pls
+app.secret_key = "super-secret-key"  # TODO: поменять в проде
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    """
-    Веб-страница с формой загрузки файла.
-    """
+    # Страница с загрузкой файла
     if request.method == "POST":
         if "file" not in request.files:
             flash("Файл не найден в запросе.")
@@ -41,28 +38,13 @@ def index():
             flash(f"Ошибка при обработке файла: {e}")
             return redirect(request.url)
 
-    # get
+    # GET-запрос
     return render_template("index.html")
 
 
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
-    """
-    REST-эндпоинт для предсказания.
-    Принимает:
-      - multipart/form-data с полем 'file' (изображение)
-
-    Возвращает JSON:
-      {
-        "success": true/false,
-        "error": "...",
-        "prediction": {
-            "class": "...",
-            "confidence": 0.95,
-            "probabilities": { "class": prob, ... }
-        }
-      }
-    """
+        # API для предсказания по изображению
     if "file" not in request.files:
         return jsonify(
             {
@@ -104,12 +86,10 @@ def api_predict():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    """
-    Простой health-check эндпоинт.
-    """
+    # Проверка, что сервис запущен
     return jsonify({"status": "ok"}), 200
 
 
 if __name__ == "__main__":
-    # run local
+    # Локальный запуск
     app.run(host="0.0.0.0", port=5000, debug=True)

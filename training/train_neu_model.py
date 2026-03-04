@@ -9,7 +9,7 @@ from tensorflow.keras import layers, models
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import math
 
-# settings
+# Настройки
 
 
 IMG_SIZE = (200, 200)
@@ -18,11 +18,9 @@ EPOCHS = 30
 SEED = 42
 
 
-# get base dir
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# data paths
-# structure
+# Пути к данным
 DATA_DIR_TRAIN = os.path.join(BASE_DIR, "datasets", "train", "images")
 DATA_DIR_VAL   = os.path.join(BASE_DIR, "datasets", "validation", "images")
 
@@ -36,23 +34,20 @@ assert os.path.isdir(DATA_DIR_VAL), f"Val dir not found: {DATA_DIR_VAL}"
 print("✓ Датасет найден!")
 
 
-# load data
-
-
-# aug
+# Аугментация
 train_datagen = ImageDataGenerator(
     rescale=1.0 / 255.0,
-    rotation_range=20,           # вращение на 20 градусов
-    width_shift_range=0.2,       # сдвиг по ширине на 20%
-    height_shift_range=0.2,      # сдвиг по высоте на 20%
-    shear_range=0.2,             # сдвиг перспективы
-    zoom_range=0.2,              # масштабирование
-    horizontal_flip=True,        # горизонтальное отражение
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
     fill_mode='nearest',
 )
 
 val_datagen = ImageDataGenerator(
-    rescale=1.0 / 255.0,  # no aug
+    rescale=1.0 / 255.0,
 )
 
 train_data = train_datagen.flow_from_directory(
@@ -80,7 +75,7 @@ class_names = [idx_to_class[i] for i in range(num_classes)]
 print("Классы (по индексам):", class_names)
 
 
-# model
+# Модель
 
 base_model = tf.keras.applications.ResNet50V2(
     input_shape=IMG_SIZE + (3,),
@@ -97,10 +92,9 @@ x = inputs
 x = base_model(x, training=False)
 x = layers.GlobalAveragePooling2D()(x)
 
-# dense regs
 x = layers.Dense(512, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-4))(x)
 x = layers.BatchNormalization()(x)
-x = layers.Dropout(0.6)(x)  # увеличили с 0.5 на 0.6
+x = layers.Dropout(0.6)(x)
 
 x = layers.Dense(256, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-4))(x)
 x = layers.BatchNormalization()(x)
@@ -112,12 +106,12 @@ model = keras.Model(inputs, outputs, name="neu_resnet50v2")
 model.summary()
 
 
-# make results dir
+# Папка для результатов
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-# lr plan
+# План изменения learning rate
 
 
 initial_lr = 1e-4
@@ -132,11 +126,10 @@ def lr_schedule(epoch, lr):
 
 lr_callback = keras.callbacks.LearningRateScheduler(lr_schedule)
 
-# use earlystop
-# restore best
+# Early stopping
 earlystop_cb = keras.callbacks.EarlyStopping(
-    monitor="val_accuracy",  # ← смотрим на val_accuracy (не val_loss)
-    patience=7,              # ← увеличиваем patience чтобы дать модели больше времени
+    monitor="val_accuracy",
+    patience=7,
     restore_best_weights=True,
     mode="max",
     verbose=1,
@@ -145,30 +138,30 @@ earlystop_cb = keras.callbacks.EarlyStopping(
 model.compile(
     optimizer=keras.optimizers.Adam(
         learning_rate=initial_lr,
-        weight_decay=1e-5,  # добавляем weight decay для регуляризации
+        weight_decay=1e-5,
     ),
     loss="categorical_crossentropy",
     metrics=["accuracy"],
 )
 
 
-# train
+# Обучение
 
 
 history = model.fit(
     train_data,
     epochs=EPOCHS,
     validation_data=val_data,
-    callbacks=[lr_callback, earlystop_cb],  # без ModelCheckpoint
+    callbacks=[lr_callback, earlystop_cb],
     verbose=1,
 )
 
 
-# plots
+# Графики
 
 
 def plot_history(history, save_path=None):
-    """Сохраняет графики обучения (accuracy и loss)"""
+    # Сохраняет графики accuracy и loss
     acc = history.history.get("accuracy", [])
     val_acc = history.history.get("val_accuracy", [])
     loss = history.history.get("loss", [])
@@ -206,7 +199,7 @@ def plot_history(history, save_path=None):
 plot_history(history, save_path=os.path.join(RESULTS_DIR, "training_history.png"))
 
 
-# eval
+# Оценка
 
 
 val_data.reset()
@@ -215,12 +208,12 @@ y_pred = np.argmax(pred_probs, axis=1)
 y_true = val_data.classes
 target_names = class_names
 
-# save report
+# Отчёт
 report = classification_report(y_true, y_pred, target_names=target_names)
 print("\nClassification report (VAL):")
 print(report)
 
-# Сохраняем отчет в текстовый файл
+# Сохраняем отчёт в файл
 report_path = os.path.join(RESULTS_DIR, "classification_report.txt")
 with open(report_path, "w", encoding="utf-8") as f:
     f.write("=" * 60 + "\n")
@@ -234,7 +227,7 @@ with open(report_path, "w", encoding="utf-8") as f:
     f.write("- Support: количество примеров класса в тестовом наборе\n")
 print(f"✓ Classification report сохранён: {report_path}")
 
-# cm
+# Матрица ошибок
 cm = confusion_matrix(y_true, y_pred)
 
 fig, ax = plt.subplots(figsize=(8, 7))
@@ -269,16 +262,14 @@ print(f"✓ Confusion matrix сохранена: {cm_path}")
 plt.show()
 
 
-# save model
-
-# save final
+# Сохранение модели
 MODEL_OUTPUT_DIR = os.path.join(BASE_DIR, "app", "models")
 os.makedirs(MODEL_OUTPUT_DIR, exist_ok=True)
 
 final_model_path = os.path.join(MODEL_OUTPUT_DIR, "neu_best_finetuned.keras")
 model.save(final_model_path)
 
-# save names
+# Сохранение имён классов
 class_names_path = os.path.join(MODEL_OUTPUT_DIR, "class_names.txt")
 with open(class_names_path, "w", encoding="utf-8") as f:
     for name in target_names:

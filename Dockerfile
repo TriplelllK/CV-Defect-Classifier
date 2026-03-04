@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Устанавливаем системные зависимости
+# Системные пакеты
 RUN apt-get update && apt-get install -y \
     build-essential \
     libglib2.0-0 \
@@ -11,15 +11,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Устанавливаем зависимости
+# Python зависимости
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем приложение
+# Копируем код
 COPY app ./app
 
-# Порт
+# Порт приложения
 EXPOSE 5000
 
-# Запуск через gunicorn
+# Старт сервера
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app.app:app"]
