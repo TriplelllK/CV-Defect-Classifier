@@ -1,10 +1,6 @@
 # CV Defect Classifier 🔍
 
-<<<<<<< HEAD
 Веб-приложение на Flask для классификации дефектов поверхности с использованием глубокого обучения. Приложение использует обученную модель ResNet50V2 для детектирования и классификации различных типов дефектов на промышленных поверхностях.
-=======
-Целью проекта является повышение скорости контроля качества в производственном процессе путем автоматической диагностики дефектов поверхности металла по фотографии.
->>>>>>> 96bddadfc5388d10038c25a1da26eba5ad8ee245
 
 ---
 
@@ -60,7 +56,6 @@ pip install -r requirements.txt
 
 ### 5. Подготовьте датасет
 
-<<<<<<< HEAD
 Скачайте **NEU Surface Defects dataset**:
 - GitHub: https://github.com/abnormally/NEU_surface_defects_data
 
@@ -85,21 +80,6 @@ datasets/
         ├── rolled-in_scale/
         └── scratches/
 ```
-=======
-[NEU Surface Defects](https://www.kaggle.com/datasets/kaustubhdikshit/neu-surface-defect-database?resource=download)
-
-
-
-## Классы дефектов
-
-- crazing
-- inclusion
-- patches
-- pitted_surface
-- rolled-in_scale
-- scratches
-
->>>>>>> 96bddadfc5388d10038c25a1da26eba5ad8ee245
 
 ### 6. Обучите модель
 
@@ -328,29 +308,7 @@ python -m training.grad_cam_demo
   2. **Heatmap** — тепловая карта внимания (красный=высокое внимание)
   3. **Наложение** — Grad-CAM поверх оригинала
 
-<<<<<<< HEAD
 ### Как интерпретировать результаты
-=======
-## Метрики проекта и примеры результатов
-
-Training history
-
-![Training history](images/training_history.png)
-
-Confusion matrix
-
-![Confusion matrix](images/confusion_matrix.png)
-
-Output sample
-
-![Output sample](images/output_sample.png)
-
-Grad cam sample
-
-![Output sample](images/grad_cam4.png)
-
-## Docker
->>>>>>> 96bddadfc5388d10038c25a1da26eba5ad8ee245
 
 - 🔴 **Красные/жёлтые области** — модель сосредоточена здесь при предсказании
 - 🔵 **Синие области** — модель игнорирует эти части
@@ -365,7 +323,6 @@ Grad cam sample
 show_gradcam(r"datasets/validation/images/scratches/scratches_123.jpg")
 ```
 
-<<<<<<< HEAD
 ---
 
 ## 🔜 Планы развития
@@ -481,6 +438,3 @@ print(f"Дефект: {predict_class}, уверенность: {confidence:.2%}"
 *Последнее обновление: март 2026*
 
 **Версия проекта:** 1.1.0 (Updated с улучшениями обучения и визуализацией)
-=======
-
->>>>>>> 96bddadfc5388d10038c25a1da26eba5ad8ee245
