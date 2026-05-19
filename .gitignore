@@ -1,23 +1,23 @@
-# Виртуальные окружения
+# venv
 .venv/
 venv/
 env/
 
-# Python мусор
+# python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.log
 
-# Jupyter
+# jupyter
 *.ipynb
 .ipynb_checkpoints/
 
-# Датасеты
+# датасеты
 NEU_surface_defects/
 
-# Тяжёлые модели
+# модели
 *.keras
 *.h5
 
@@ -27,7 +27,13 @@ NEU_surface_defects/
 .DS_Store
 Thumbs.db
 
-# outputs
+# выводы
 results/
+training/results/
 training/*.png
 training/*.txt
+
+# env
+.env
+*.swp
+.pytest_cache/
