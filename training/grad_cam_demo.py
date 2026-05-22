@@ -1,177 +1,100 @@
 import os
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import tensorflow as tf
-from tensorflow.keras.preprocessing import image as keras_image
 
+from app.model_utils import IMG_SIZE
 
-tf.config.run_functions_eagerly(True)
-
-
-IMG_SIZE = (200, 200)
-
-# Базовые пути
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 MODEL_PATH = os.path.join(BASE_DIR, "app", "models", "neu_best_finetuned.keras")
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "app", "models", "class_names.txt")
-
-# Папка с примерами
-EXAMPLE_IMG = os.path.join(BASE_DIR, "datasets", "validation", "images")
-
-print(f"Base directory: {BASE_DIR}")
-print(f"MODEL_PATH: {MODEL_PATH}")
-print(f"CLASS_NAMES_PATH: {CLASS_NAMES_PATH}")
-print(f"EXAMPLE_IMG dir: {EXAMPLE_IMG}")
+EXAMPLE_DIR = os.path.join(BASE_DIR, "datasets", "validation", "images")
 
 
-
-if not os.path.isfile(MODEL_PATH):
-    raise FileNotFoundError(f"Модель не найдена по пути:\n{MODEL_PATH}")
-
-if not os.path.isfile(CLASS_NAMES_PATH):
-    raise FileNotFoundError(f"class_names.txt не найден по пути:\n{CLASS_NAMES_PATH}")
-
-def find_sample_image(base_img_dir):
-    # Ищем первое изображение в подпапках классов
-    if not os.path.isdir(base_img_dir):
+def find_sample_image(base_dir):
+    if not os.path.isdir(base_dir):
         return None
-    
-    for class_dir in os.listdir(base_img_dir):
-        class_path = os.path.join(base_img_dir, class_dir)
-        if os.path.isdir(class_path):
-            for img_file in os.listdir(class_path):
-                if img_file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
-                    return os.path.join(class_path, img_file)
+    for cls in sorted(os.listdir(base_dir)):
+        cls_path = os.path.join(base_dir, cls)
+        if not os.path.isdir(cls_path):
+            continue
+        for fname in sorted(os.listdir(cls_path)):
+            if fname.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")):
+                return os.path.join(cls_path, fname)
     return None
 
-IMG_PATH = find_sample_image(EXAMPLE_IMG)
 
-if not IMG_PATH:
-    raise FileNotFoundError(f"Изображения не найдены в {EXAMPLE_IMG}. Добавьте файл в datasets/validation/images/")
-
-print(f"\nИзображение: {IMG_PATH}")
-
+def load_image(path):
+    img = tf.keras.utils.load_img(path, target_size=IMG_SIZE)
+    arr = tf.keras.utils.img_to_array(img)
+    return np.expand_dims(arr, axis=0), arr.astype("uint8")
 
 
-model = tf.keras.models.load_model(MODEL_PATH)
-
-with open(CLASS_NAMES_PATH, "r", encoding="utf-8") as f:
-    class_names = [line.strip() for line in f.readlines() if line.strip()]
-
-print("Классы модели:", class_names)
-
-
-backbone = model.get_layer("resnet50v2")
-print("Backbone name:", backbone.name)
-print("Backbone output shape:", backbone.output_shape)
-
-
-
-
-feature_input = tf.keras.Input(shape=backbone.output_shape[1:])
-
-
-x = feature_input
-apply = False
-for layer in model.layers:
-    
-    if layer.name == backbone.name:
-        apply = True
-        continue
-    if apply:
-        
-        x = layer(x)
-
-head_model = tf.keras.Model(feature_input, x, name="head_model")
-
-print("Head model summary:")
-head_model.summary()
-
-
-
-def load_and_preprocess_image(img_path, img_size=IMG_SIZE):
-    # Загружаем и нормализуем изображение
-    img = keras_image.load_img(img_path, target_size=img_size)
-    img_array = keras_image.img_to_array(img).astype("float32") / 255.0
-    img_batch = np.expand_dims(img_array, axis=0)
-    return img_batch, img_array  
-
-
-def make_gradcam_heatmap(img_array_batch):
-    # Строим heatmap через градиенты
+def make_gradcam(model, backbone, img_batch):
+    grad_model = tf.keras.Model(
+        inputs=model.inputs,
+        outputs=[backbone.output, model.output],
+    )
     with tf.GradientTape() as tape:
-        feature_maps = backbone(img_array_batch, training=False)
-        tape.watch(feature_maps)
+        conv_out, preds = grad_model(img_batch, training=False)
+        pred_index = tf.argmax(preds[0])
+        class_channel = preds[:, pred_index]
 
-        predictions = head_model(feature_maps, training=False)
-
-        pred_index = tf.argmax(predictions[0])
-        class_channel = predictions[:, pred_index]
-
-    grads = tape.gradient(class_channel, feature_maps)
-
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-
-    feature_maps = feature_maps[0]
-
-    heatmap = tf.reduce_sum(feature_maps * pooled_grads, axis=-1)
-
+    grads = tape.gradient(class_channel, conv_out)
+    pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
+    conv_out = conv_out[0]
+    heatmap = tf.reduce_sum(conv_out * pooled, axis=-1)
     heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-8)
-    return heatmap.numpy(), predictions.numpy()
+    return heatmap.numpy(), preds.numpy()
 
 
-def show_gradcam(img_path):
-    # Показываем Grad-CAM для одного изображения
-    print(f"\nОбработка: {img_path}")
-    img_batch, img_array = load_and_preprocess_image(img_path)
+def show_gradcam(img_path, model, backbone, class_names):
+    print(f"Изображение: {img_path}")
+    img_batch, original = load_image(img_path)
+    heatmap, preds = make_gradcam(model, backbone, img_batch)
 
-    heatmap, preds = make_gradcam_heatmap(img_batch)
+    idx = int(np.argmax(preds[0]))
+    pred_class = class_names[idx]
+    confidence = float(preds[0][idx])
 
-    pred_index = int(np.argmax(preds[0]))
-    pred_class = class_names[pred_index]
-    confidence = float(preds[0][pred_index])
-
-    h, w, _ = img_array.shape
+    h, w, _ = original.shape
     heatmap_resized = cv2.resize(heatmap, (w, h))
-    heatmap_resized = np.uint8(255 * heatmap_resized)
+    heatmap_resized = (255 * heatmap_resized).astype(np.uint8)
     heatmap_color = cv2.applyColorMap(heatmap_resized, cv2.COLORMAP_JET)
+    overlay = np.clip(heatmap_color * 0.4 + original, 0, 255).astype("uint8")
 
-    original_uint8 = (img_array * 255).astype("uint8")
-
-    superimposed_img = heatmap_color * 0.4 + original_uint8
-    superimposed_img = np.clip(superimposed_img, 0, 255).astype("uint8")
-
-    plt.figure(figsize=(12, 4))
-
-    plt.subplot(1, 3, 1)
-    plt.imshow(original_uint8)
-    plt.title("Исходное изображение")
-    plt.axis("off")
-
-    plt.subplot(1, 3, 2)
-    plt.imshow(heatmap, cmap="jet")
-    plt.title("Grad-CAM heatmap")
-    plt.axis("off")
-
-    plt.subplot(1, 3, 3)
-    plt.imshow(superimposed_img)
-    plt.title(f"{pred_class} ({confidence*100:.2f}%)")
-    plt.axis("off")
-
+    _, axes = plt.subplots(1, 3, figsize=(12, 4))
+    axes[0].imshow(original); axes[0].set_title("Оригинал"); axes[0].axis("off")
+    axes[1].imshow(heatmap, cmap="jet"); axes[1].set_title("Grad-CAM"); axes[1].axis("off")
+    axes[2].imshow(overlay); axes[2].set_title(f"{pred_class} ({confidence*100:.2f}%)"); axes[2].axis("off")
     plt.tight_layout()
-    plt.show()
 
+    out_path = os.path.join(BASE_DIR, "images", "grad_cam4.png")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.show()
+    plt.close()
     print(f"Класс: {pred_class}, уверенность: {confidence*100:.2f}%")
 
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image", help="путь к изображению")
+    args = parser.parse_args()
+
+    img_path = args.image or find_sample_image(EXAMPLE_DIR)
+    if not img_path or not os.path.isfile(img_path):
+        raise SystemExit(f"Изображение не найдено: {img_path}")
+
+    model = tf.keras.models.load_model(MODEL_PATH)
+    with open(CLASS_NAMES_PATH, encoding="utf-8") as f:
+        class_names = [line.strip() for line in f if line.strip()]
+    backbone = model.get_layer("resnet50v2")
+
+    show_gradcam(img_path, model, backbone, class_names)
+
+
 if __name__ == "__main__":
-    print("\nGrad-CAM")
-
-    # Показываем пример
-    show_gradcam(IMG_PATH)
-
-    # Подсказка для другого файла
-    print("\nДля другого файла вызовите:")
-    print('show_gradcam("путь/к/изображению.jpg")')
+    main()
