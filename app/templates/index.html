@@ -2,48 +2,42 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-  <title>Определение дефекта</title>
+    <title>Определение дефекта</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>Определение дефекта по фото</h1>
+    <h1>Определение дефекта по фото</h1>
 
     {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash">
-          {% for msg in messages %}
-            <div>{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
+        {% if messages %}
+            <div class="flash">
+                {% for msg in messages %}
+                    <div>{{ msg }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
     {% endwith %}
 
     <div class="upload-form">
         <form method="post" enctype="multipart/form-data">
-        <label for="file">Выберите изображение (JPG/PNG):</label><br><br>
+            <label for="file">Выберите изображение (JPG/PNG):</label><br><br>
             <input type="file" name="file" id="file" accept="image/*" required>
             <br><br>
-        <button type="submit">Проверить</button>
+            <button type="submit">Проверить</button>
         </form>
     </div>
 
     {% if pred_class %}
     <div class="result">
         <h2>Результат</h2>
-      <p><strong>Класс:</strong> {{ pred_class }}</p>
-      <p><strong>Уверенность:</strong> {{ (confidence * 100) | round(2) }}%</p>
+        <p><strong>Класс:</strong> {{ pred_class }}</p>
+        <p><strong>Уверенность:</strong> {{ (confidence * 100) | round(2) }}%</p>
 
-      <h3>Вероятности по классам:</h3>
+        <h3>Вероятности по классам:</h3>
         <table>
-            <tr>
-                <th>Класс</th>
-                <th>Вероятность, %</th>
-            </tr>
+            <tr><th>Класс</th><th>Вероятность, %</th></tr>
             {% for cls, prob in probs.items() %}
-            <tr>
-                <td>{{ cls }}</td>
-                <td>{{ (prob * 100) | round(2) }}</td>
-            </tr>
+            <tr><td>{{ cls }}</td><td>{{ (prob * 100) | round(2) }}</td></tr>
             {% endfor %}
         </table>
     </div>
