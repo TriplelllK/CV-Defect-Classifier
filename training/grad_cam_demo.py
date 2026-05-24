@@ -33,19 +33,22 @@ def load_image(path):
 
 
 def make_gradcam(model, backbone, img_batch):
-    grad_model = tf.keras.Model(
-        inputs=model.inputs,
-        outputs=[backbone.output, model.output],
-    )
+    preprocess = tf.keras.applications.resnet_v2.preprocess_input
+    bb_idx = model.layers.index(backbone)
+    head_layers = model.layers[bb_idx + 1:]
+
     with tf.GradientTape() as tape:
-        conv_out, preds = grad_model(img_batch, training=False)
-        pred_index = tf.argmax(preds[0])
-        class_channel = preds[:, pred_index]
+        conv_out = backbone(preprocess(img_batch), training=False)
+        tape.watch(conv_out)
+        x = conv_out
+        for layer in head_layers:
+            x = layer(x)
+        preds = x
+        class_channel = preds[:, tf.argmax(preds[0])]
 
     grads = tape.gradient(class_channel, conv_out)
     pooled = tf.reduce_mean(grads, axis=(0, 1, 2))
-    conv_out = conv_out[0]
-    heatmap = tf.reduce_sum(conv_out * pooled, axis=-1)
+    heatmap = tf.reduce_sum(conv_out[0] * pooled, axis=-1)
     heatmap = tf.maximum(heatmap, 0) / (tf.reduce_max(heatmap) + 1e-8)
     return heatmap.numpy(), preds.numpy()
 
