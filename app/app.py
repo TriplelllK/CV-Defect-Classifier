@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, request, redirect, flash, jsonify
 
 from .model_utils import predict_defect, model
@@ -7,6 +8,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "dev-secret")
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
 
+logging.basicConfig(level=logging.INFO)
+
 
 def _get_file():
     if "file" not in request.files:
@@ -14,6 +17,8 @@ def _get_file():
     file = request.files["file"]
     if file.filename == "":
         return None, "Файл не выбран"
+    if not (file.mimetype or "").startswith("image/"):
+        return None, "Ожидается изображение"
     return file, None
 
 
@@ -28,8 +33,9 @@ def index():
             pred_class, confidence, probs = predict_defect(file)
             return render_template("index.html", pred_class=pred_class,
                                    confidence=confidence, probs=probs)
-        except Exception as e:
-            flash(f"Не удалось обработать файл: {e}")
+        except Exception:
+            app.logger.exception("predict failed")
+            flash("Не удалось обработать файл")
             return redirect(request.url)
     return render_template("index.html")
 
@@ -49,8 +55,9 @@ def api_predict():
                 "probabilities": probs,
             },
         })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    except Exception:
+        app.logger.exception("api predict failed")
+        return jsonify({"success": False, "error": "Внутренняя ошибка обработки"}), 500
 
 
 @app.route("/api/health", methods=["GET"])
