@@ -9,8 +9,9 @@
 - Python 3.10+
 - TensorFlow / Keras (ResNet50V2)
 - Flask + Gunicorn
-- OpenCV, NumPy, Pillow
-- scikit-learn (для метрик), matplotlib (графики)
+- NumPy, Pillow
+- opencv-python (только для Grad-CAM)
+- scikit-learn (метрики), matplotlib (графики)
 
 ## Классы дефектов
 
@@ -53,14 +54,9 @@ pip install -r requirements.txt
 python -m training.train_neu_model
 ```
 
-Что делает скрипт:
-- читает картинки из `datasets/train/images` и `datasets/validation/images`
-- применяет аугментацию (flip, rotation, zoom, translation)
-- учит «голову» поверх замороженного ResNet50V2
-- сохраняет модель в `app/models/neu_best_finetuned.keras`
-- кладёт графики и classification_report в `training/results/`
+Обучение идёт в два этапа: сначала только «голова» поверх замороженного ResNet50V2, потом fine-tuning последних 20 слоёв с маленьким lr. Модель сохраняется в `app/models/neu_best_finetuned.keras`, графики и classification_report — в `training/results/`.
 
-Занимает ~15–20 минут на CPU.
+На CPU занимает ~15 минут.
 
 ## Запуск приложения
 
@@ -83,14 +79,14 @@ curl -X POST -F "file=@image.jpg" http://localhost:5000/api/predict
   "success": true,
   "prediction": {
     "class": "scratches",
-    "confidence": 0.97,
+    "confidence": 0.9413,
     "probabilities": {
-      "crazing": 0.001,
-      "inclusion": 0.005,
-      "patches": 0.01,
-      "pitted_surface": 0.004,
-      "rolled-in_scale": 0.01,
-      "scratches": 0.97
+      "crazing": 0.002,
+      "inclusion": 0.018,
+      "patches": 0.011,
+      "pitted_surface": 0.014,
+      "rolled-in_scale": 0.013,
+      "scratches": 0.9413
     }
   }
 }
@@ -112,12 +108,16 @@ docker run -p 5000:5000 cv-defect-classifier
 
 ## Модель
 
-ResNet50V2 (imagenet weights) — backbone заморожен. Сверху:
-GlobalAveragePooling → Dense(512, relu) + BN + Dropout(0.5) → Dense(256, relu) + BN + Dropout(0.5) → Dense(6, softmax).
+ResNet50V2 (imagenet weights) + голова:
+GlobalAveragePooling → Dense(512, relu) + BN + Dropout(0.4) → Dense(256, relu) + BN + Dropout(0.4) → Dense(6, softmax).
 
 Препроцессинг — `tf.keras.applications.resnet_v2.preprocess_input`.
-Optimizer: Adam(lr=1e-4). Loss: categorical_crossentropy.
-Callbacks: ReduceLROnPlateau(val_loss), EarlyStopping(val_accuracy).
+Loss: categorical_crossentropy.
+Callbacks: ReduceLROnPlateau(val_loss), EarlyStopping(val_loss).
+
+Двухэтапное обучение:
+1. Backbone заморожен, голова учится с Adam(lr=1e-3).
+2. Размораживаем последние 20 слоёв backbone, дообучаем с Adam(lr=1e-5).
 
 ## Метрики
 
@@ -130,8 +130,10 @@ Callbacks: ReduceLROnPlateau(val_loss), EarlyStopping(val_accuracy).
 
 ```bash
 python -m training.grad_cam_demo
-# или
+# конкретное изображение
 python -m training.grad_cam_demo --image datasets/validation/images/scratches/scratches_290.jpg
+# сохранить результат в файл
+python -m training.grad_cam_demo --save out.png
 ```
 
 Показывает, на какие области картинки модель «смотрит» при предсказании.
