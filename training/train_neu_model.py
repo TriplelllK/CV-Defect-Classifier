@@ -25,9 +25,17 @@ def make_datasets():
         DATA_DIR_TRAIN, image_size=IMG_SIZE, batch_size=BATCH_SIZE,
         label_mode="categorical", shuffle=True, seed=SEED,
     )
+    # Делю validation 50/50: val для EarlyStopping, test для финальной метрики
+    # shuffle=True обязателен, иначе validation_split режет алфавитно и классы делятся неровно
     val_ds = tf.keras.utils.image_dataset_from_directory(
         DATA_DIR_VAL, image_size=IMG_SIZE, batch_size=BATCH_SIZE,
-        label_mode="categorical", shuffle=False,
+        label_mode="categorical", shuffle=True, seed=SEED,
+        validation_split=0.5, subset="training",
+    )
+    test_ds = tf.keras.utils.image_dataset_from_directory(
+        DATA_DIR_VAL, image_size=IMG_SIZE, batch_size=BATCH_SIZE,
+        label_mode="categorical", shuffle=True, seed=SEED,
+        validation_split=0.5, subset="validation",
     )
     class_names = train_ds.class_names
 
@@ -42,7 +50,8 @@ def make_datasets():
     train_ds = train_ds.map(lambda x, y: (augment(x, training=True), y),
                             num_parallel_calls=autotune).prefetch(autotune)
     val_ds = val_ds.prefetch(autotune)
-    return train_ds, val_ds, class_names
+    test_ds = test_ds.prefetch(autotune)
+    return train_ds, val_ds, test_ds, class_names
 
 
 def build_model(num_classes):
@@ -103,17 +112,20 @@ def plot_history(histories, save_path):
     plt.close()
 
 
-def evaluate(model, val_ds, class_names):
-    val_probs = model.predict(val_ds, verbose=0)
-    y_pred = np.argmax(val_probs, axis=1)
-    y_true = np.concatenate([np.argmax(y.numpy(), axis=1) for _, y in val_ds])
+def evaluate(model, test_ds, class_names):
+    probs = model.predict(test_ds, verbose=0)
+    y_pred = np.argmax(probs, axis=1)
+    y_true = np.concatenate([np.argmax(y.numpy(), axis=1) for _, y in test_ds])
 
-    report = str(classification_report(y_true, y_pred, target_names=class_names))
-    print("\nClassification report (VAL):")
+    report = str(classification_report(
+        y_true, y_pred, target_names=class_names,
+        labels=list(range(len(class_names))), zero_division=0,
+    ))
+    print("\nClassification report (TEST):")
     print(report)
 
     with open(os.path.join(RESULTS_DIR, "classification_report.txt"), "w", encoding="utf-8") as f:
-        f.write("CLASSIFICATION REPORT (VALIDATION)\n")
+        f.write("CLASSIFICATION REPORT (TEST)\n")
         f.write("=" * 60 + "\n")
         f.write(report)
 
@@ -146,7 +158,7 @@ def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(MODEL_OUTPUT_DIR, exist_ok=True)
 
-    train_ds, val_ds, class_names = make_datasets()
+    train_ds, val_ds, test_ds, class_names = make_datasets()
     print("Классы:", class_names)
 
     model, base = build_model(len(class_names))
@@ -171,7 +183,7 @@ def main():
                    epochs=EPOCHS_FT, callbacks=callbacks(), verbose=1)
 
     plot_history([h1, h2], os.path.join(RESULTS_DIR, "training_history.png"))
-    evaluate(model, val_ds, class_names)
+    evaluate(model, test_ds, class_names)
 
     model.save(os.path.join(MODEL_OUTPUT_DIR, "neu_best_finetuned.keras"))
     with open(os.path.join(MODEL_OUTPUT_DIR, "class_names.txt"), "w", encoding="utf-8") as f:
