@@ -26,6 +26,13 @@ def find_sample_image(base_dir):
     return None
 
 
+def find_backbone(model):
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.Model):
+            return layer
+    raise RuntimeError("Backbone (вложенная модель) не найден")
+
+
 def load_image(path):
     img = tf.keras.utils.load_img(path, target_size=IMG_SIZE)
     arr = tf.keras.utils.img_to_array(img)
@@ -53,7 +60,7 @@ def make_gradcam(model, backbone, img_batch):
     return heatmap.numpy(), preds.numpy()
 
 
-def show_gradcam(img_path, model, backbone, class_names):
+def show_gradcam(img_path, model, backbone, class_names, save_path=None):
     print(f"Изображение: {img_path}")
     img_batch, original = load_image(img_path)
     heatmap, preds = make_gradcam(model, backbone, img_batch)
@@ -74,9 +81,10 @@ def show_gradcam(img_path, model, backbone, class_names):
     axes[2].imshow(overlay); axes[2].set_title(f"{pred_class} ({confidence*100:.2f}%)"); axes[2].axis("off")
     plt.tight_layout()
 
-    out_path = os.path.join(BASE_DIR, "images", "grad_cam4.png")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    if save_path:
+        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Сохранено: {save_path}")
     plt.show()
     plt.close()
     print(f"Класс: {pred_class}, уверенность: {confidence*100:.2f}%")
@@ -85,6 +93,7 @@ def show_gradcam(img_path, model, backbone, class_names):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", help="путь к изображению")
+    parser.add_argument("--save", help="сохранить результат в файл")
     args = parser.parse_args()
 
     img_path = args.image or find_sample_image(EXAMPLE_DIR)
@@ -94,9 +103,9 @@ def main():
     model = tf.keras.models.load_model(MODEL_PATH)
     with open(CLASS_NAMES_PATH, encoding="utf-8") as f:
         class_names = [line.strip() for line in f if line.strip()]
-    backbone = model.get_layer("resnet50v2")
+    backbone = find_backbone(model)
 
-    show_gradcam(img_path, model, backbone, class_names)
+    show_gradcam(img_path, model, backbone, class_names, save_path=args.save)
 
 
 if __name__ == "__main__":
