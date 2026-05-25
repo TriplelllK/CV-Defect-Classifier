@@ -3,14 +3,14 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
-preprocess_input = tf.keras.applications.resnet_v2.preprocess_input
-
 IMG_SIZE = (200, 200)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "models", "neu_best_finetuned.keras")
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "models", "class_names.txt")
 
+# Модель содержит preprocess_input как первый Lambda-слой,
+# поэтому на вход подаём сырые [0..255] значения.
 model = tf.keras.models.load_model(MODEL_PATH)
 
 with open(CLASS_NAMES_PATH, "r", encoding="utf-8") as f:
@@ -21,7 +21,7 @@ def preprocess_image(file) -> np.ndarray:
     file.stream.seek(0)
     img = Image.open(file).convert("RGB").resize(IMG_SIZE)
     arr = np.array(img, dtype="float32")
-    return preprocess_input(np.expand_dims(arr, axis=0))
+    return np.expand_dims(arr, axis=0)
 
 
 def predict_defect(file):
