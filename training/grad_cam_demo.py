@@ -49,7 +49,7 @@ def make_gradcam(model, backbone, img_batch):
         tape.watch(conv_out)
         x = conv_out
         for layer in head_layers:
-            x = layer(x)
+            x = layer(x, training=False)
         preds = x
         class_channel = preds[:, tf.argmax(preds[0])]
 
