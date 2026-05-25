@@ -79,14 +79,14 @@ curl -X POST -F "file=@image.jpg" http://localhost:5000/api/predict
   "success": true,
   "prediction": {
     "class": "scratches",
-    "confidence": 0.9413,
+    "confidence": 0.9982,
     "probabilities": {
-      "crazing": 0.002,
-      "inclusion": 0.018,
-      "patches": 0.011,
-      "pitted_surface": 0.014,
-      "rolled-in_scale": 0.013,
-      "scratches": 0.9413
+      "crazing": 0.0,
+      "inclusion": 0.0,
+      "patches": 0.0015,
+      "pitted_surface": 0.0,
+      "rolled-in_scale": 0.0003,
+      "scratches": 0.9982
     }
   }
 }
@@ -121,7 +121,7 @@ Callbacks: ReduceLROnPlateau(val_loss), EarlyStopping(val_loss).
 
 ## Метрики
 
-На валидации получается ~98% accuracy.
+Validation делится 50/50 на val (для EarlyStopping) и test (для финальной оценки). На test после fine-tuning получается **~98% accuracy** при F1 0.96–1.00 по классам.
 
 ![training history](images/training_history.png)
 ![confusion matrix](images/confusion_matrix.png)
