@@ -113,9 +113,11 @@ def plot_history(histories, save_path):
 
 
 def evaluate(model, test_ds, class_names):
-    probs = model.predict(test_ds, verbose=0)
-    y_pred = np.argmax(probs, axis=1)
-    y_true = np.concatenate([np.argmax(y.numpy(), axis=1) for _, y in test_ds])
+    y_pred, y_true = [], []
+    for x_batch, y_batch in test_ds:
+        probs = model.predict(x_batch, verbose=0)
+        y_pred.extend(np.argmax(probs, axis=1))
+        y_true.extend(np.argmax(y_batch.numpy(), axis=1))
 
     report = str(classification_report(
         y_true, y_pred, target_names=class_names,
